@@ -1,0 +1,34 @@
+# Sobe o banco PostgreSQL + o back-end (nao precisa ter Java nem PostgreSQL instalados):
+#   docker compose up --build
+# So o banco (para rodar o back-end pelo VS Code/Maven):
+#   docker compose up -d postgres
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: monitoria
+      POSTGRES_USER: monitoria
+      POSTGRES_PASSWORD: monitoria
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U monitoria -d monitoria"]
+      interval: 3s
+      retries: 20
+
+  api:
+    build: .
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/monitoria
+      DB_USER: monitoria
+      DB_PASSWORD: monitoria
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
