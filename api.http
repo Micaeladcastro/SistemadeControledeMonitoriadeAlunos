@@ -1,0 +1,232 @@
+### =====================================================================
+### Testes da API no VS Code
+### 1. Instale a extensao "REST Client" (autor: Huachao Mao)
+### 2. Suba o back-end:  docker compose up --build
+### 3. Clique em "Send Request" acima de cada requisicao, DE CIMA PARA BAIXO
+###    (os logins guardam o token usado pelas requisicoes seguintes)
+### =====================================================================
+@api = http://localhost:8080/api
+@key = monitoria-frontend-dev-key
+
+### ---------- LOGINS (rode os 3 primeiro) ----------
+
+# @name loginAdmin
+POST {{api}}/auth/login
+X-Frontend-Key: {{key}}
+Content-Type: application/json
+
+{ "login": "admin", "senha": "admin123" }
+
+###
+# @name loginProf
+POST {{api}}/auth/login
+X-Frontend-Key: {{key}}
+Content-Type: application/json
+
+{ "login": "prof", "senha": "prof123" }
+
+###
+# @name loginAluno
+POST {{api}}/auth/login
+X-Frontend-Key: {{key}}
+Content-Type: application/json
+
+{ "login": "aluno", "senha": "aluno123" }
+
+###
+@admin = {{loginAdmin.response.body.token}}
+@prof = {{loginProf.response.body.token}}
+@aluno = {{loginAluno.response.body.token}}
+
+### ---------- SEGURANCA ----------
+
+### Sem a chave do front-end -> deve dar 403
+GET {{api}}/ies
+
+### Sem token -> deve dar 401
+GET {{api}}/ies
+X-Frontend-Key: {{key}}
+
+### Quem sou eu (perfis, docenteId, discenteId)
+GET {{api}}/auth/me
+X-Frontend-Key: {{key}}
+Authorization: Bearer {{admin}}
+
+### ---------- ADMINISTRADOR: IES / CA / CURSO ----------
+
+### Listar IES
+GET {{api}}/ies
+X-Frontend-Key: {{key}}
+Authorization: Bearer {{admin}}
+
+### Cadastrar IES (UCB)
+# @name novaIes
+POST {{api}}/ies
+X-Frontend-Key: {{key}}
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{
+  "sigla": "UCB",
+  "nome": "Universidade Catolica de Brasilia",
+  "email": "contato@ucb.br",
+  "telefone": "(61) 3356-9000",
+  "reitor": "Nome do Reitor",
+  "proReitorias": [
+    { "nome": "Pro-Reitoria de Graduacao", "nomeado": "Nome do Pro-Reitor", "dataNomeacao": "2025-02-01" }
+  ]
+}
+
+### Inativar IES (motivo obrigatorio)
+PATCH {{api}}/ies/{{novaIes.response.body.id}}/inativar
+X-Frontend-Key: {{key}}
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{ "motivo": "Teste de inativacao" }
+
+### Historico da IES
+GET {{api}}/historico/IES/{{novaIes.response.body.id}}
+X-Frontend-Key: {{key}}
+Authorization: Bearer {{admin}}
+
+### Listar Centros Academicos
+GET {{api}}/centros-academicos
+X-Frontend-Key: {{key}}
+Authorization: Bearer {{admin}}
+
+### Cadastrar Centro Academico na UCSAL (iesId 1)
+POST {{api}}/centros-academicos
+X-Frontend-Key: {{key}}
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{
+  "sigla": "CEDU",
+  "nome": "Escola de Educacao",
+  "email": "cedu@ucsal.br",
+  "telefone": "(71) 3203-8802",
+  "coordenador": "Nome do Coordenador",
+  "iesId": 1
+}
+
+### Listar Cursos
+GET {{api}}/cursos
+X-Frontend-Key: {{key}}
+Authorization: Bearer {{admin}}
+
+### Cadastrar Docente (login e senha = matricula, se nao informar senhaInicial)
+POST {{api}}/docentes
+X-Frontend-Key: {{key}}
+Authorization: Bearer {{admin}}
+Content-Type: application/json
+
+{
+  "matricula": "D0002",
+  "nome": "Maria Docente",
+  "email": "maria@ucsal.br",
+  "telefone": "(71) 99999-1111",
+  "centroAcademicoId": 1
+}
+
+### Listar Docentes
+GET {{api}}/docentes
+X-Frontend-Key: {{key}}
+Authorization: Bearer {{admin}}
+
+### ---------- COLABORADOR (prof) ----------
+
+### Cadastrar Disciplina (curso 1 = Engenharia de Software)
+# @name novaDisciplina
+POST {{api}}/disciplinas
+X-Frontend-Key: {{key}}
+Authorization: Bearer {{prof}}
+Content-Type: application/json
+
+{ "sigla": "POO", "descricao": "Programacao Orientada a Objetos", "cursoId": 1, "cargaHoraria": 60 }
+
+### Listar Discentes
+GET {{api}}/discentes
+X-Frontend-Key: {{key}}
+Authorization: Bearer {{prof}}
+
+### Cadastrar Monitoria com 60 minutos -> deve dar 422 (maximo 50)
+POST {{api}}/monitorias
+X-Frontend-Key: {{key}}
+Authorization: Bearer {{prof}}
+Content-Type: application/json
+
+{
+  "discenteId": 1, "disciplinaId": {{novaDisciplina.response.body.id}},
+  "diasSemana": ["MONDAY", "WEDNESDAY"],
+  "horaInicio": "14:00", "horaFim": "15:00",
+  "dataInicio": "2026-08-03", "dataFim": "2026-12-10"
+}
+
+### Cadastrar Monitoria valida (50 minutos)
+# @name novaMonitoria
+POST {{api}}/monitorias
+X-Frontend-Key: {{key}}
+Authorization: Bearer {{prof}}
+Content-Type: application/json
+
+{
+  "discenteId": 1, "disciplinaId": {{novaDisciplina.response.body.id}},
+  "diasSemana": ["MONDAY", "WEDNESDAY"],
+  "horaInicio": "14:00", "horaFim": "14:50",
+  "dataInicio": "2026-08-03", "dataFim": "2026-12-10"
+}
+
+### Listar minhas monitorias
+GET {{api}}/monitorias
+X-Frontend-Key: {{key}}
+Authorization: Bearer {{prof}}
+
+### ---------- USUARIO (aluno) ----------
+
+### Cadastrar Relatorio da Monitoria
+POST {{api}}/relatorios-monitoria
+X-Frontend-Key: {{key}}
+Authorization: Bearer {{aluno}}
+Content-Type: application/json
+
+{
+  "monitoriaId": {{novaMonitoria.response.body.id}},
+  "tipo": "PRESENCIAL",
+  "localAtuacao": "Laboratorio 3",
+  "ocorrencias": "Duvidas sobre heranca e polimorfismo",
+  "frequencia": [
+    { "data": "2026-08-03", "alunoNome": "Ana", "alunoMatricula": "A9", "presente": true },
+    { "data": "2026-08-03", "alunoNome": "Beto", "presente": false }
+  ],
+  "consideracoesFinais": "Boa participacao da turma"
+}
+
+### ---------- RELATORIOS PDF (abrem na aba de resposta; use "Save Response" para salvar) ----------
+
+### PDF relatorio final da monitoria (aluno)
+GET {{api}}/relatorios/monitorias/{{novaMonitoria.response.body.id}}/final
+X-Frontend-Key: {{key}}
+Authorization: Bearer {{aluno}}
+
+### PDF estrutura academica (admin)
+GET {{api}}/relatorios/estrutura-academica
+X-Frontend-Key: {{key}}
+Authorization: Bearer {{admin}}
+
+### PDF docentes (admin)
+GET {{api}}/relatorios/docentes
+X-Frontend-Key: {{key}}
+Authorization: Bearer {{admin}}
+
+### PDF monitorias do colaborador
+GET {{api}}/relatorios/minhas-monitorias
+X-Frontend-Key: {{key}}
+Authorization: Bearer {{prof}}
+
+### ---------- AUDITORIA ----------
+
+### Logs de auditoria (admin)
+GET {{api}}/auditoria?size=20
+X-Frontend-Key: {{key}}
+Authorization: Bearer {{admin}}

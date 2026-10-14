@@ -1,0 +1,44 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: monitoria-backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/monitoria}
+    username: ${DB_USER:monitoria}
+    password: ${DB_PASSWORD:monitoria}
+  jpa:
+    hibernate:
+      ddl-auto: validate   # o schema e criado pelo Flyway (src/main/resources/db/migration)
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+  web:
+    locale: pt_BR            # mensagens de validacao em portugues
+    locale-resolver: fixed
+  jackson:
+    time-zone: America/Bahia
+
+app:
+  # Origem (URL) do front-end Angular. Somente ela e aceita pelo CORS.
+  frontend-origin: ${FRONTEND_ORIGIN:http://localhost:4200}
+  # Chave compartilhada entre o front-end (proxy) e o back-end. Toda requisicao para /api/**
+  # precisa do header X-Frontend-Key com esse valor. Deixe vazio para desligar (apenas em desenvolvimento).
+  frontend-key: ${FRONTEND_KEY:monitoria-frontend-dev-key}
+  jwt:
+    # Em producao, defina JWT_SECRET com no minimo 32 caracteres
+    secret: ${JWT_SECRET:troque-este-segredo-por-um-valor-grande-e-aleatorio-123456}
+    expiration-minutes: ${JWT_EXPIRATION_MINUTES:480}
+  seed:
+    admin-login: ${ADMIN_LOGIN:admin}
+    admin-password: ${ADMIN_PASSWORD:admin123}
+    # Cria um docente (prof/prof123) e um discente (aluno/aluno123) de demonstracao
+    demo-users: ${SEED_DEMO_USERS:true}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
